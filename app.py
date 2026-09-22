@@ -37,7 +37,7 @@ st.set_page_config(
 # Initialize Groq LLM
 # ============================================================
 
-llm = ChatGroq(model="openai/gpt-oss-20b",temperature=0)
+llm = ChatGroq(model="openai/gpt-oss-20b",groq_api_key=st.secrets["GROQ_API_KEY"])
 
 # ============================================================
 # PDF QA Chain
