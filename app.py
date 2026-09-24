@@ -40,6 +40,13 @@ st.set_page_config(
 llm = ChatGroq(model="openai/gpt-oss-20b",groq_api_key=st.secrets["GROQ_API_KEY"])
 
 # ============================================================
+# Session State Initialization
+# ============================================================
+
+if "qa_chain" not in st.session_state:
+    st.session_state.qa_chain = None
+
+# ============================================================
 # PDF QA Chain
 # ============================================================
 
@@ -48,7 +55,9 @@ qa_chain = None
 uploaded_file = st.file_uploader("Upload PDF",type="pdf")
 
 if uploaded_file:
-
+    # 🔄 Reset QA chain whenever a new file is uploaded
+    st.session_state.qa_chain = None
+    
     with tempfile.NamedTemporaryFile(delete=False,suffix=".pdf") as tmp_file:
         tmp_file.write(uploaded_file.getvalue())
         pdf_path = tmp_file.name
@@ -64,9 +73,10 @@ if uploaded_file:
     # Embeddings
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-    # Vector database
-    vectordb = Chroma.from_documents(chunks,embeddings)
-
+   # Create a fresh vector database for this session
+    persist_dir = tempfile.mkdtemp()
+    vectordb = Chroma.from_documents(chunks, embeddings, persist_directory=persist_dir)
+    
     # Retriever
     retriever = vectordb.as_retriever()
 
@@ -99,8 +109,9 @@ if uploaded_file:
     # Create document chain
     stuff_chain = create_stuff_documents_chain(llm,prompt)
 
-    # Create retrieval chain 
-    qa_chain = create_retrieval_chain(retriever,stuff_chain)
+    # Create retrieval chain
+    st.session_state.qa_chain = create_retrieval_chain(retriever, stuff_chain)
+
     st.success(f"PDF uploaded successfully: {uploaded_file.name}")
 
 
@@ -114,22 +125,13 @@ def query_pdf(query: str) -> str:
     Search the uploaded PDF and answer questions
     based on its contents.
     """
-
-    if qa_chain is None:
+    if st.session_state.qa_chain is None:
         return "No PDF has been uploaded."
 
     try:
-
-        result = qa_chain.invoke(
-            {
-                "input": query
-            }
-        )
-
+        result = st.session_state.qa_chain.invoke({"input": query})
         return result["answer"]
-
     except Exception as e:
-
         return f"Error while querying PDF: {str(e)}"
 
 
