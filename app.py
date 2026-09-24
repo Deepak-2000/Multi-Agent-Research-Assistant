@@ -50,7 +50,6 @@ if "qa_chain" not in st.session_state:
 # PDF QA Chain
 # ============================================================
 
-qa_chain = None
 
 uploaded_file = st.file_uploader("Upload PDF",type="pdf")
 
